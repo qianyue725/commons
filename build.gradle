@@ -1,0 +1,141 @@
+group 'com.qianyue'
+version '1.0.0'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+apply plugin: 'java'
+
+ext {
+    slf4jVersion = '1.7.25'
+    lombokVersion = '1.18.8'
+    lionsoulVersion = '1.7.2'
+    commonsLang3Version = '3.8.1'
+    jsonpVersion = '1.12.1'
+    commonsIoVersion = '2.4'
+    fastjsonVersion = '1.2.67'
+    jacksonVersion = '2.10.1'
+    env = System.getProperty("env") == null ? 'dev' : System.getProperty("env")
+    mavenUrl = 'http://172.28.84.60:8081'
+}
+
+
+
+allprojects {
+    apply plugin: 'java'
+    apply plugin: 'maven-publish'
+
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+
+    configurations.all {
+        resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+        exclude group: "org.slf4j", module: "slf4j-log4j12"
+        exclude group: "log4j"
+    }
+
+    task sourcesJar(type: Jar, dependsOn: classes) {
+        classifier = 'sources'
+        from sourceSets.main.allSource
+    }
+
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+    }
+
+    publishing {
+        repositories {
+            maven {
+                if (project.version.endsWith('-SNAPSHOT')) {
+                    url "${mavenUrl}/repository/maven-snapshots/"
+                } else if (env == "dev") {
+                    project.version += "-SNAPSHOT"
+                    url "${mavenUrl}/repository/maven-snapshots/"
+                } else {
+                    url "${mavenUrl}/repository/maven-releases/"
+                }
+
+                credentials {
+                    username "admin"
+                    password "admin123"
+                }
+            }
+        }
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java
+                artifact(sourcesJar) {
+                    classifier = 'sources'
+                }
+                pom.withXml {
+                    asNode().dependencies.dependency.each {
+                        dep ->
+                            if (dep.version.text() == "unspecified") {
+                                dep.getAt('groupId').get(0).setValue(project.group)
+                                dep.getAt('version').get(0).setValue(project.version)
+                            }
+                    }
+                }
+            }
+        }
+    }
+}
+
+subprojects {
+    version = parent.version
+    group = parent.group
+
+    repositories {
+        mavenLocal()
+        jcenter()
+        maven { url "${mavenUrl}/repository/maven-public/" }
+    }
+
+    sourceSets {
+        main {
+            resources {
+                srcDirs = ["src/main/resources/base", "src/main/resources/$env"]
+            }
+        }
+        test {
+            resources {
+                srcDirs = ["src/test/resources/base", "src/test/resources/$env"]
+            }
+        }
+    }
+}
+
+project(":commons-serialization") {
+
+    dependencies {
+        //compile project(":shower-domain")
+        compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+        compile group: 'com.alibaba', name: 'fastjson', version: '1.2.68'
+        compile group: 'com.google.guava', name: 'guava', version: '28.2-jre'
+        compile group: 'com.esotericsoftware', name: 'kryo', version: '4.0.0'
+        compile group: 'de.javakaffee', name: 'kryo-serializers', version: '0.42'
+        compile group: 'org.apache.commons', name: 'commons-collections4', version: '4.4'
+        compile group: 'org.apache.commons', name: 'commons-pool2', version: '2.8.0'
+        compile "io.netty:netty-all:4.1.42.Final"
+    }
+}
+
+project(":commons-base") {
+
+    dependencies {
+        compile("org.slf4j:slf4j-api:${slf4jVersion}") {
+            transitive = false
+        }
+        compileOnly("org.projectlombok:lombok:${lombokVersion}")
+        compile("org.jsoup:jsoup:${jsonpVersion}")
+        compile("org.apache.commons:commons-lang3:${commonsLang3Version}")
+        compile("org.lionsoul:ip2region:${lionsoulVersion}")
+        compile("commons-io:commons-io:${commonsIoVersion}")
+        compile("com.fasterxml.jackson.core:jackson-core:${jacksonVersion}")
+        compile("com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}")
+        compile("com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}")
+        compile("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jacksonVersion}")
+    }
+}
+
+

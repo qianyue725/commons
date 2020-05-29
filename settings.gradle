@@ -1,0 +1,4 @@
+rootProject.name = 'commons'
+include 'commons-serialization'
+include 'commons-base'
+
